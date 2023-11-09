@@ -1,0 +1,866 @@
+image:img_0.png[]						CDW Workshop Guide
+
+
+
+---
+
+1
+image:img_0.png[]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*DATA WAREHOUSE*
+
+
+
+*ハンズオン・ワークショップ 2023*
+
+
+
+*受講者ガイド*
+
+toc::[]= CLOUDERA DATA WAREHOUSE WORKSHOP
+:toc: macro
+
+
+=== はじめに
+
+このハンズオンワークショップでは、Cloudera Data Warehouse を使用して、Rawデータを迅速に探索し、データをキュレーションし、わかりやすいレポートやダッシュボードを作り出す方法を体験して頂きます。
+
+
+
+取り扱うデータは、航空機製造メーカーが保有する航空機運行情報を想定したデータです。
+
+テーブルの種類やボリューム、相関は以下のようなものになります。
+
+
+
+* Fact テーブル: 
+  ** flights (8,600万行)
+* Dimension テーブル: 
+  ** airlines (1,500行)
+  ** airports (3,300行)
+  ** planes (5,000行)
+
+image:img_1.png[]
+
+
+
+
+
+=== 作業環境
+
+* ワークショップ全体を通して、操作は全てWebブラウザで行います
+* サポートブラウザはGoogle Chromeです
++
+IE、Firefox、Safariはサポート外なので注意してください
+
+
+=== ワークショップの概要
+
+ワークショップの本編は6つのラボで構成されています。
+
+それぞれのラボの概要を下記に説明します。
+
+* *[ラボ 1 & 2]: Rawデータレイヤーへのアクセス*
+  ** CDP Public Cloud および Data Warehouse サービスへのアクセス方法やコントロールプレーンの操作方法を習得します
+  ** データレイクへ格納されたデータファイルにスキーマを適用し Data Warehouse サービスからのアクセスを可能にします
+* *[ラボ 3 & 4]: レイクハウスの体験*
+  ** アクセス可能となったRawデータに対して、テーブルフォーマットおよびストレージフォーマットを適用し、ウェアハウスを構築していきます
+  ** Hive テーブルフォーマットを体験します
+  ** 最新のIceberg テーブルフォーマットを体験します
+* *[ラボ 5 & 6]: Cloudera Data Warehouse の活用*
+  ** Cloudera SDX が、Data Warehouse のセキュリティ・ガバナンスをどのように強化しているかを体験します
+  ** さらに完成した Data Warehouse のデータを、Cloudera Data Visualization で可視化し、どのようにデータを利活用できるか体験します
+
+
+
+
+
+== ラボ 0 - 準備作業
+
+---
+
+
+
+
+このワークショップで使用するログイン情報や環境を確認します
+
+=== 情報の確認とワークショップ環境へのログイン
+
+==== 手順 1 : 情報の確認
+
+ワークショップ環境にログインするためのユーザ名やパスワードは別添の一覧表に記載してあります。講師より一覧表を受け取って内容を確認してください。
+
+
+
+
+|===
+| *Workshop Login Username (username)* | <講師よりお知らせします>                         
+| *Workshop Login Password*            | <講師よりお知らせします>                         
+| *CDP Workload User*                  | <講師よりお知らせします>                         
+| *CDP Workload Password*              | <講師よりお知らせします>                         
+| *S3 Bucket Name*                     | <講師よりお知らせします>                         
+| *Hive Virtual Warehouse Name*        | <講師よりお知らせします>                         
+| *Impala Virtual Warehouse Name*      | <講師よりお知らせします>                         
+|===
+
+
+==== 手順 2 : ログイン 
+
+ワークショップ環境のURLにアクセスし、Workshop Login Username/Passwordでログインします。ログインページは以下のようなもので、初回はパスワード変更が要求されます。
+
+image:img_2.png[]
+
+=== CDP Workload Passwordの設定
+
+==== 手順 1 : プロファイル情報の確認
+
+ログインに成功するとCDPのホームページが表示されます。CDPのデータサービスや各種管理サービスのアイコンが表示されます。画面左下のユーザ名のアイコンをクリックし *Profile* をクリックします。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+==== 手順 2 : Workload Password の設定
+
+Set Workload Password をクリックします
+
+image:img_3.png[]
+
+
+
+
+
+講師から指定されたパスワードを入力してください。
+
+
+
+image:img_4.png[]
+
+*Set Workload Password* ボタンをクリックして確定します。
+
+
+
+
+
+== ラボ1 - Data Warehouse 画面操作
+
+---
+
+
+
+
+Management Console 左側メニューの Data Warehouses をクリックして、Data Warehouse コンソールを表示します。
+
+image:img_5.png[]
+
+
+
+
+
+Data Warehouses のコンソール画面が開きます。
+
+画面下に列挙されているものが今回のワークショップで使用する Virtual Warehouse です。
+
+Hive および Impala の計2つの Virtual Warehouse が用意されています。
+
+image:img_6.png[]
+
+
+
+
+
+
+
+== ラボ 2 - RAWデータへのアクセス
+
+---
+
+
+
+
+はじめに、外部のデータソースなどから供給されたインプットデータをHiveからアクセスできるようにします。このワークショップでは、AWSのS3上にテキストのCSVファイルが供給されているものとします。
+
+テキストなどのrawデータに対して、後からスキーマを設定して、HiveのSQLでアクセスできるようにします。このような操作をSchema on Readといいます。
+
+=== データベースとテーブルの作成
+
+==== 手順 1 : Hueの利用（Hive）
+
+Hue は Cloudera Data Platform 上のデータを操作するためのWebアプリケーションです。
+
+Hive Virtual Warehouse Name で示される Virtual Warehouse の右上にある HUE アイコンをクリックします。
+
+image:img_7.png[]
+
+
+
+
+
+
+
+==== 手順 2 : データベースの作成
+
+このワークショップで使うデータベースを作成します。
+
+データベースの作成は CREATE DATABASE 文で行います。
+
+
+
+このSQLを実際にHueのSQLエディタで実行しましょう。
+
+${user_id} はHive変数です。HueではHive変数を検出すると自動的に変数の入力ボックスが表示されます。
+
+また複数行のSQLを実行する場合は、実行したいSQL文をドラッグしてハイライトした状態で実行ボタンをクリックします。
+
+${usre_id} のボックスに自分のユーザ名を入力し、SQL分をハイライトして実行ボタンをクリックします。
+
+image:img_8.png[]
+
+
+
+
+
+以下のSQLを実行して、実際にデータベースが作成されたことを確認します。
+
+
+
+image:img_9.png[]
+
+
+
+==== 手順 3 : テーブルの作成
+
+AWS S3 に保存されているCSVファイルにスキーマを設定し、HiveのSQLでアクセスできるようにします。
+
+1つ目のSQLを例に、構文を説明します。
+
+
+
+
+
+
+
+同じ構文のSQLで、flights_csv, planes_csv, airlines_csv, airlines_csv の4つのテーブルを作成します。
+
+${user_id} は各自のユーザ名、${cdp_env_bucket} は S3 Bucket Name を入力します。
+
+複数行を実行する場合は、実行するSQLをハイライトしてください。
+
+
+
+
+
+
+
+
+
+image:img_10.png[]
+
+
+
+==== 手順 4 : 作成したテーブルの確認
+
+以下のSQLでテーブルが作成されたことを確認します。
+
+${user_id} は各自のユーザ名を入力します。
+
+複数行を実行する場合は、実行するSQLをハイライトしてください。
+
+
+
+下記のように4つのテーブルが作成されていることを確認してください。
+
+image:img_11.png[]
+
+
+
+==== 手順 5 : Impalaからのデータアクセス
+
+Hive で作成されたテーブルには Impala でもアクセスできます。
+
+Data Warehouse コンソール画面に戻ります。Impala Virtual Warehouse Name の右上にある HUE アイコンをクリックします。
+
+image:img_12.png[]
+
+
+
+以下のSQLを実行し、flight_csv テーブルにアクセスできることを確認します。
+
+${user_id} は各自のユーザ名を入力します。
+
+
+
+image:img_13.png[]
+
+
+
+== ラボ 3 - ICEBERGテーブルの作成
+
+---
+
+
+
+
+このワークショップでは、Iceberg テーブルを作成する3つの方法を見ていきます。
+
+既に Cloudera Data Warehouse を利用している場合は、既に多数の Hive テーブルが利用されていることが想定されます。
+
+Iceberg では既存の Hive テーブルを再作成することなく、Iceberg テーブルへ移行できる In-place migration がサポートされています。
+
+Iceberg を新規に作成する手順の他、既存の Hive テーブルから移行する方法を含め、3つの Iceberg テーブル作成方法を見ていきます。
+
+
+
+== 〜　テーブルマイグレーションのイメージ挿入
+
+
+
+
+
+ここからの操作は再びHiveで実行します。
+
+Data Warehouse コンソールから、Hive Virtual Warehouse をクリックし、HUEにアクセスします。
+
+image:img_14.png[]
+
+
+
+
+
+
+
+=== 既存のテーブルをIceberg形式へ変更 (In-place migration)
+
+既に運用中の Data Warehouse で使われている Hive テーブルを、そのままIcebergへ移行することが可能です。
+
+
+
+はじめに移行元となるHiveテーブルを作成します。以下のSQLで planes テーブルを Parquet 形式で作成します。
+
+${user_id} は各自のユーザ名を入力します。
+
+複数行を実行する場合は、実行するSQLをハイライトしてください。
+
+
+
+
+
+image:img_15.png[]
+
+
+
+
+
+次に planes_csv テーブルからデータを登録します。
+
+${user_id} は各自のユーザ名を入力します。
+
+
+
+image:img_16.png[]
+
+
+
+テーブル作成が完了したら以下のSQLを実行して、データが正しく追加されているか確認しましょう。
+
+${user_id} は各自のユーザ名を入力します。
+
+
+
+以下のような結果が得られれば成功です。
+
+image:img_17.png[]
+
+
+
+
+
+以下のSQLを実行し、作成された Parqet テーブルの属性情報を確認します。
+
+${user_id} は各自のユーザ名を入力します。
+
+
+
+SQLの実行結果から以下の箇所を確認します。
+
+
+|===
+| Location                                                                                     | s3a:// _bucket_name_ /data/warehouse/tablespace/external/hive/ _user_id_ _airlines.db/planes | 新しいテーブルはインプットのCSVとは別のディレクトリに保存され /warehouse ディレクトリ配下にテーブル名に応じたディレクトリが作成されます                   
+| Table Type                                                                                   | EXTERNAL_TABLE                                                                               | CREATE EXTERNAL 文により外部テーブルとなっています                                                             
+| SerDe Library                                                                                | org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe                                  | STORED AS 句で指定されたフォーマットに準じたSerDe(Serializer/Desirializer)が設定されます                              
+|===
+
+
+
+
+実際の画面では枠線内の項目を確認してください。
+
+image:img_18.png[]
+
+
+
+
+
+
+
+作成したテーブルを planes テーブルを Iceberg テーブルへ移行します。
+
+移行はテーブルに対する ALTER 文により実行します。
+
+
+
+${user_id} は各自のユーザ名を入力します。
+
+複数行を実行する場合は、実行するSQLをハイライトしてください。
+
+
+
+このSQLを実行することにより、以下のような変更が行われます。
+
+* テーブルそのものが Iceberg フォーマットに変更されます（In-placeマイグレーション）。
+* ファイルのストレージフォーマットは変更されません。既存の Parquet 形式が継承されます。
+* メタ情報だけが変更されます。DESCRIBE FORMATTED 文により、変更されたメタ情報を確認します。 
+
+
+|===
+| *Location*                                                           | データファイルの場所は変更されず、引き続きクラウドストレージ（S3）に置かれています。これは Hive テーブルのときの場所と同じです。  
+| *Table Type*                                                         | テーブルは外部テーブル（EXTERNAL TABLE）です、                                        
+| *Table Parameters: MIGRATED_TO_ICEBERG*                              | 値は"TRUE”で、Icerberg テーブルへ移行されたことを示します。                                 
+| *Table Parameters: table_type*                                       | ICEBERG テーブルフォーマットであることを示します。                                         
+| *Table Parameters: metadata_location*                                | Iceberg のメタ情報ファイルの場所を示します。                                            
+| *Table Parameters: storage_handler*                                  | org.apache.iceberg.mr.hive.HiveIcebergStorageHandler.                 
+| *SerDe Library*                                                      | org.apache.iceberg.mr.hive.HiveIcebergSerDe.                          
+|===
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Iceberg テーブルへの In-place マイグレーションの前後では以下のテーブルプロパティに変化が現れます。
+
+
+|===
+| *項目*                                                                                         | Hiveテーブル                                                                                     | Icebergテーブル                                                                                   
+| *Location*                                                                                   | s3a:// _bucket_name_ /data/warehouse/tablespace/external/hive/ _user_id_ _airlines.db/planes | → 変更なし                                                                                        
+| *Table Type*                                                                                 | EXTERNAL_TABLE                                                                               | → 変更なし                                                                                        
+| *Table Parameters:**MIGRATED_TO_ICEBERG*                                                     | パラメータなし                                                                                      | true                                                                                          
+| *Table Parameters:+table_type*                                                               | パラメータなし                                                                                      | ICEBERG                                                                                       
+| *Table Parameters:+metadata_location*                                                        | パラメータなし                                                                                      | Iceberg のメタ情報ファイルの場所を示します。                                                                    
+| *Table Parameters:+storage_handler*                                                          | パラメータなし                                                                                      | org.apache.iceberg.mr.hive.HiveIcebergStorageHandler.                                         
+| *SerDe Library*                                                                              | org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe                                  | org.apache.iceberg.mr.hive.HiveIcebergSerDe.                                                  
+|===
+
+
+
+
+
+
+=== 既存のテーブルをコピーしてIcebergテーブルを作成 (CTAS)
+
+CTAS 構文により Iceberg フォーマットの airports テーブルを作成します。
+
+テーブルフォーマットの指定は、STORED *BY* 句であることに注意してください。
+
+（Parquet や ORC などストレージ形式は STORED *AS* 句で指定）
+
+
+
+${user_id} は各自のユーザ名を入力します。
+
+複数行を実行する場合は、実行するSQLをハイライトしてください。
+
+
+
+Table Migration とは 異なり、CTAS では新しい Iceberg テーブルが作成されます。
+
+DESCRIBE FORMATTED 文の結果から、各属性情報を確認します。
+
+
+|===
+| *Location*                                            | クラウドストレージ（S3）のパスが示されています。今回は新しいパスが作成されていることを確認します。     
+| *Table Type*                                          | テーブルは外部テーブル（EXTERNAL TABLE）です、                         
+| *Table Parameters: MIGRATED_TO_ICEBERG*               | 新規テーブル作成なのでありません。                                      
+| *Table Parameters: table_type*                        | ICEBERG テーブルフォーマットであることを示します。                          
+| *Table Parameters: metadata_location*                 | Iceberg のメタ情報ファイルの場所を示します。                             
+| *Table Parameters: storage_handler*                   | org.apache.iceberg.mr.hive.HiveIcebergStorageHandler.  
+| *SerDe Library*                                       | org.apache.iceberg.mr.hive.HiveIcebergSerDe.           
+|===
+
+
+
+
+=== Iceberg テーブルの新規作成
+
+Icerberg テーブルフォーマットでパーティション化されたテーブルを新規に作成します。
+
+ストレージは Parquet 形式で保存します。ストレージ形式は Iceberg がサポートするものであれば使用可能です（ORC、Avroなど） 
+
+
+
+今日のワークショップで一番大きなテーブルとなる flights テーブルを Icerberg フォーマットで作成します。
+
+${user_id} は各自のユーザ名を入力します。
+
+複数行を実行する場合は、実行するSQLをハイライトしてください。
+
+
+
+image:img_19.png[]
+
+
+
+SHOW CREATE TABLE 文は CREATE TABLE 文を再現することで、テーブルの属性情報を表示します。内容は DESCRIBE FORMATTED 文とほぼ同じです。
+
+PARTITIONED BY SPEC 句を探し、”year”カラムでパーティションが作成されていることを確認します。
+
+image:img_20.png[]
+
+
+
+LOCATION、metadata_location、table_type、ストレージフォーマットなどの情報も確認します。
+
+image:img_21.png[]
+
+
+
+
+
+実際にテーブルにデータを INSERT してみましょう。
+
+シンプルな INSERT SELECT 文を使用しますが、”year”カラムの値ごとにパーティションに分割して登録されます。
+
+
+
+${user_id} は各自のユーザ名を入力します。
+
+複数行を実行する場合は、実行するSQLをハイライトしてください。
+
+この操作は少し時間がかかります。
+
+
+
+image:img_22.png[]
+
+
+
+
+
+== ラボ4 - ICEBERGの機能
+
+---
+
+
+
+
+このラボでは、パフォーマンスやTCOをベストな状態に維持するため、パフォーマンスの最適化やテーブルの保守を行います。
+
+Data Warehouse コンソールから、自分の Hive Virtual Warehouse をクリックし、HUEにアクセスします。
+
+image:img_23.png[]
+
+
+
+=== パーティションの最適化(Iceberg in-place Partition Evolution)
+
+Iceberg ではパーティションの構成を後から変更することができ、特徴的な機能のひとつとなっています。
+
+
+
+前の手順で作成した flights テーブルは、year でパーティションを作成し、年単位でストレージ領域を分割していました。
+
+将来的にデータ量が増えてくると、年単位の分割では十分なパフォーマンスを得られないかもしれません。
+
+そのようなケースを想定して、今後追加するデータについては、月別にパーティション分割することとします。
+
+
+
+従来型の Hive テーブルでは、パーティション構成を変更するにはテーブルの再構築が必要でしたが、Iceberg テーブルでは既存のテーブルを維持したまま構成変更を行うことが可能です。
+
+パーティションの構成を変更するには ALTER TABLE 文を使用します。
+
+
+
+== 〜 パーティションエボリューションの図を挿入　〜
+
+
+
+それでは flights テーブルのパーティション構成を変更してみましょう。
+
+${user_id} は各自のユーザ名を入力します。
+
+複数行を実行する場合は、実行するSQLをハイライトしてください。
+
+
+
+image:img_24.png[]
+
+SHOW CREATE TABLE 文の結果からパーティション構成が変更されていることを確認します。
+
+image:img_25.png[]
+
+これ以降に追加されるデータは、新しいパーティション定義に従って追加されます。
+
+
+
+flights テーブルに新しいデータを追加します。
+
+${user_id} は各自のユーザ名を入力します。
+
+複数行を実行する場合は、実行するSQLをハイライトしてください。
+
+この操作は少し時間がかかります。
+
+
+
+
+
+
+
+
+
+SQLの実行計画にどのような変化が現れるかを確認します。この操作は Impala で行います。
+
+Data Warehouse コンソールから、自分の Impala Virtual Warehouse をクリックし、HUEにアクセスします。
+
+image:img_26.png[]
+
+
+
+はじめにパーティション構成変更前に登録された、year = 2006 のパーティションの状態を確認します。
+
+SQLエディタに以下のSQLを貼り付けますが、 *実行しないでください。*
+
+
+
+SQLを実行せずに実行計画を確認するために、SQL実行ボタンの下にあるドロップダウンを展開し、Explain をクリックします。
+
+image:img_27.png[]
+
+実行計画を確認します。パーティション内のファイルサイズが100MB以上であることを確認します。
+
+image:img_28.png[]
+
+
+
+次にパーティション構成変更前に登録された、year = 2007 のパーティションの状態を確認します。
+
+SQLエディタに以下のSQLを貼り付けますが、 *実行しないでください。*
+
+
+
+同様に、SQL実行ボタンの下にあるドロップダウンを展開し、Explain をクリックします。
+
+image:img_29.png[]
+
+
+
+実行計画を確認します。パーティション内のファイルサイズが10MB程度となっています。
+
+このデータは1年につき100MB前後のデータですが、パーティションを年月(year,month)で分割したことで約1/12のサイズとなりました。
+
+パーティション分割することによって、一度にアクセスするデータ量を減らすことができます。これは Iceberg のテーブル設計の重要な要素のひとつです。
+
+image:img_30.png[]
+
+
+
+
+
+=== スナップショット
+
+ここまでで何回かに渡り flights テーブルにデータを追加してきました。この後、さらにデータを追加していきます。この時、Iceberg ではデータを追加する都度、スナップショットが保存されます。スナップショットには、追加されたデータのメタ情報（ファイル名やタイムスタンプなど）が記録されます。
+
+
+
+今回のデータ追加は Impala で実行します。
+
+${user_id} は各自のユーザ名を入力します。
+
+
+
+image:img_31.png[]
+
+
+
+
+
+
+
+データの追加が完了したら、DESCRIBE HISTORY 文でこれまでに作成されたスナップショットを確認します。
+
+${user_id} は各自のユーザ名を入力します。
+
+
+
+image:img_32.png[]
+
+
+
+year 別に3回データの追加を行ったので、3つのスナップショットが作られています。
+
+
+
+スナップショットの値をメモ帳などに貼り付けて保存してください。
+
+左側のダウンロードアイコンから、CSVやExcelなどの形式で保存することも可能です。
+
+この後のタイムトラベル機能で使用します。
+
+
+
+image:img_33.png[]
+
+
+
+
+
+=== タイムトラベル
+
+記録したスナップショットIDを使って、スナップショット作成時のデータにアクセスすることができます。
+
+スナップショットを使用するには、FOR SYSTEM_TIME AS OF 句、FOR SYSTEM_VERSION AS OF 句を使用します。
+
+
+
+はじめに下記のSQLをSQLエディタに貼り付けてください。
+
+SQLは *実行しないでください。*
+
+
+
+SQLを貼り付けると *create_ts* と *snapshot_id* の2つのボックスが表示されます。
+
+image:img_34.png[]
+
+
+
+
+
+メモ帳に保存したタイムスタンプから1番最初のものを create_ts ボックスに貼り付けます。
+
+（この例では、2023-04-04 06:51:14.360000000 です）
+
+
+
+ひとつ目のSQLだけをハイライトして実行します。
+
+最新のデータは year = 2008 のデータまで追加されていますが、このタイムスタンプで追加された year = 2006 以前のデータだけが返ってくることを確認します。
+
+${user_id} は各自のユーザ名を入力します。
+
+image:img_35.png[]
+
+
+
+
+
+メモ帳に保存したスナップショットIDから2番目のものを snapshot_id ボックスに貼り付けます。
+
+（この例では、6341506406760449831 です）
+
+
+
+二つ目のSQLだけをハイライトして実行します。
+
+最新のデータは year = 2008 のデータまで追加されていますが、このタイムスタンプで追加された year = 2007 以前のデータだけが返ってくることを確認します。
+
+${user_id} は各自のユーザ名を入力します。
+
+image:img_36.png[]
+
+
+
+
+
+=== ロールバック　※実行しないでください
+
+時々データは正しくロードされないことがあります。項目の欠損や不正データなど様々な要因が考えられます。
+
+このような場合、不正なデータを正しく削除して、もう一度データをロードしなければいけません。
+
+
+
+Iceberg ではロールバックコマンドがサポートされており、このようなケースで役立ちます。
+
+スナップショットIDを使ったロールバックでは、ALTER TABLE 文で EXECUTE ROLLBACK 句を使用します。
+
+以下はSQLの例です。 *ここでは実行しないでください。*
+
+
+
+=== スナップショットの保守　※実行しないでください
+
+また時間の経過とともに、非常に古いスナップショットは不要となってきます。そのような場合にはスナップショットを無効化することができます。
+
+スナップショットを無効化するには、ALTER TABLE 文の EXECUTE 句で、expire_snapshots() 関数を使用します。
+
+以下はSQLの例です。 *ここでは実行しないでください。*
+
+
+
+
+
+
+
+`これでワークショップは完了です。`
+
+`データ利活用のための新しい発見や気づきがあれば幸いです。`
+
