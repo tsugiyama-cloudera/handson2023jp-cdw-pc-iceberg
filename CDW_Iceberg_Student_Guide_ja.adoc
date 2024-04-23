@@ -196,6 +196,7 @@ AWS S3 に保存されているCSVファイルにスキーマを設定し、Hive
 1つ目のSQLを例に、構文を説明します。
 
 ```sql
+※※※ このSQLは説明用なので実行しないでください ※※※
 -- テーブルが存在していた場合は削除
 drop table if exists ${user_id}_airlines_raw.flights_csv;
 
@@ -204,7 +205,7 @@ CREATE EXTERNAL TABLE ${user_id}_airlines_raw.flights_csv
 (
   month int,
   dayofmonth int,
-  dayofweek int,
+  dayofweek int ...
 -- 中略 --
   securitydelay int, 
   lateaircraftdelay int,
