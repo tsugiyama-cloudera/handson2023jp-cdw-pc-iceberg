@@ -216,7 +216,7 @@ FIELDS TERMINATED BY ','    -- 項目の区切り文字は','(カンマ)
 LINES TERMINATED BY '\n'    -- 行の区切り文字は改行コード
 STORED AS TEXTFILE          -- ファイルフォーマットはテキストファイル
 LOCATION                    -- ファイルの保存場所  
-  's3a://${cdp_env_bucket}/iceberg-hott/airlines-csv/flights'
+  's3a://${cdp_env_bucket}/data/airlines-csv/flights'
 tblproperties(
   "skip.header.line.count"="1"  -- 先頭1行をヘッダとして読み飛ばす
 );
