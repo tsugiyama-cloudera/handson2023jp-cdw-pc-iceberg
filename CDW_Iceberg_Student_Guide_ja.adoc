@@ -304,14 +304,32 @@ select count(*) from ${user_id}_airlines_raw.flights_csv;
 
 image:img_10.png[]
 
+今日はこのあと、大量データ(8600万件)の入ったflightsのデータを使いながら、 Iceberg の基本的な使い方や機能、パフォーマンスを体験していきます。
 
+データ処理を考える上で、データの性質（中身、構造）を把握しておくことはとても重要です。
+ということで、データの中身をもう少し詳細に確認してみましょう。
+
+以下のSQLで、flightデータの最初の10を表示します。
+どんな列があり、各列にどんな値が入っているのかを確認しましょう。
+
+```sql:最初の10行を確認
+SELECT * FROM ${user_id}_airlines_raw.flights_csv
+limit 10;
+```
+
+以下のSQLで、flightデータが各年ごとに何件入っているのかを確認します。
+（このあとの演習で、年や月ごとにパーティションを切る体験をします）
+
+```sql:各yearごとに何件のレコードが入っているかを確認
+SELECT year, COUNT(*)
+FROM ${user_id}_airlines_raw.flights_csv
+group by year
+order by year asc;
+```
 
 == ラボ 3 - ICEBERGテーブルの作成
 
 ---
-
-
-
 
 このワークショップでは、Iceberg テーブルを作成する3つの方法を見ていきます。
 
