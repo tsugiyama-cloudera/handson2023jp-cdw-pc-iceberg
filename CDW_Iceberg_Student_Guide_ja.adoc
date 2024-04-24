@@ -309,7 +309,7 @@ image:img_10.png[]
 データ処理を考える上で、データの性質（中身、構造）を把握しておくことはとても重要です。
 ということで、データの中身をもう少し詳細に確認してみましょう。
 
-以下のSQLで、flightデータの最初の10を表示します。
+以下のSQLで、flightデータの最初の10を表示します。   
 どんな列があり、各列にどんな値が入っているのかを確認しましょう。
 
 ```sql:最初の10行を確認
@@ -317,7 +317,7 @@ SELECT * FROM ${user_id}_airlines_raw.flights_csv
 limit 10;
 ```
 
-以下のSQLで、flightデータが各年ごとに何件入っているのかを確認します。
+以下のSQLで、flightデータが各年ごとに何件入っているのかを確認します。   
 （このあとの演習で、年や月ごとにパーティションを切る体験をします）
 
 ```sql:各yearごとに何件のレコードが入っているかを確認
@@ -332,10 +332,6 @@ order by year asc;
 ---
 
 このワークショップでは、Iceberg テーブルを作成する3つの方法を見ていきます。
-
-既に Cloudera Data Warehouse を利用している場合は、既に多数の Hive テーブルが利用されていることが想定されます。
-
-Iceberg では既存の Hive テーブルを再作成することなく、Iceberg テーブルへ移行できる In-place migration がサポートされています。
 
 Iceberg を新規に作成する手順の他、既存の Hive テーブルから移行する方法を含め、3つの Iceberg テーブル作成方法を見ていきます。
 
@@ -364,9 +360,9 @@ image:img_15.png[]
 
 Icerberg テーブルフォーマットでパーティション化されたテーブルを新規に作成します。
 
-作成したテーブルを集計しパーティションの効果も復習します。
+作成したテーブルを集計しパーティションの効果も確認します。
 
-
+==== 空の Iceberg テーブルを作成し、属性情報を確認する
 
 ワークショップで一番大きな flights テーブルを Icerberg フォーマットで作成します。
 
@@ -424,16 +420,16 @@ image:img_17.png[]
 | *TBLPROPERTIES. table_type*                                                        | ICEBERG テーブルフォーマットであることを示します。                                                       
 |===
 
+上記の項目を、最初に作った Hive テーブルとも見比べてみましょう。
+
+```sql
+SHOW CREATE TABLE ${user_id}_airlines.flights;
+```
 
 
+==== 空の Iceberg テーブルにデータをINSERT
 
-
-
-実際にテーブルにデータを INSERT してみましょう。
-
-シンプルな INSERT SELECT 文を使用しますが、”year”カラムの値ごとにパーティションに分割して登録されます。
-
-
+次に、今作った空の Iceberg テーブルに 実際にデータを INSERT してみましょう。
 
 ${user_id} は各自のユーザ名を入力します。
 
@@ -453,6 +449,8 @@ image:img_18.png[]
 
 
 
+上記はシンプルな INSERT SELECT 文であり、INSERT文の中ではパーティションについての記述をしていません。  
+ですが、あらかじめCREATE TABLE 文の中で  ”year” カラムの値ごとにパーティションを区切るように指定しているため、実際には ”year” カラムの値ごとにパーティションに分割して登録されます。  
 
 
 パーティションを使うことで、GROUP BY を使ったグループ別の集計を高速に処理することができます。パーティション化された flights テーブルと、rawデータの flights_csv テーブルのそれぞれで、以下のSQLを実行し処理時間を比較してみましょう。
@@ -505,9 +503,22 @@ image:img_20.png[]
 
 === 既存のテーブルをIceberg形式へ変更 (In-place migration)
 
-既に運用中の Data Warehouse で使われている Hive テーブルを、そのままIcebergへ移行することが可能です。
+既に Cloudera Data Warehouse を利用している場合は、既に多数の Hive テーブルが利用されていることが想定されます。
 
+Iceberg では既存の Hive テーブルを再作成することなく、Iceberg テーブルへ移行できる In-place migration がサポートされています。
 
+これにより、既に運用中の Data Warehouse で使われている Hive テーブルを、そのままIcebergへ移行することが可能です。
+
+==== この演習の流れ
+
+先ほどは、 flights テーブルを新規の Iceberg テーブルとして空で作成したあと、Hive テーブルの中身をロードするという処理を行いました。
+
+今度は planes テーブルを使って、既存の Hive テーブルを Iceberg テーブルに移行（変換）する流れを体験します。
+
+まず、移行元のテーブルとして、 planes テーブルを parquet 形式で作成します。
+そのあとで、この planes テーブルを Iceberg に移行します。
+
+==== 移行元の Hive テーブルを作成
 
 はじめに移行元となるHiveテーブルを作成します。以下のSQLで planes テーブルを Parquet 形式で作成します。
 
@@ -599,35 +610,35 @@ image:img_24.png[]
 
 
 
-
+==== Hive テーブルを Iceberg に変換
 
 
 
 作成した planes テーブルを Iceberg テーブルへ移行します。
 
-テーブルに対する ALTER 文により移行は行われます。
+移行はテーブルに対する ALTER 文で行います。
 
 
 
 ${user_id} は各自のユーザ名を入力します。
 
-複数行を実行する場合は、実行するSQLをハイライトしてください。
-
 ```sql
 ALTER TABLE ${user_id}_airlines.planes
 SET TBLPROPERTIES ('storage_handler'='org.apache.iceberg.mr.hive.HiveIcebergStorageHandler');
-
-DESCRIBE FORMATTED ${user_id}_airlines.planes;
 ```
-
 
 
 このSQLを実行することにより、以下のような変更が行われます。
 
 * テーブルそのものが Iceberg フォーマットに変更されます（In-placeマイグレーション）。
-* ファイルのストレージフォーマットは変更されません。既存の Parquet 形式が継承されます。
-* メタ情報だけが変更されます。DESCRIBE FORMATTED 文により、変更されたメタ情報を確認します。 
+* ファイルのストレージフォーマットは変更されません。既存の Parquet 形式が継承され、メタ情報だけが変更されます。 
 
+
+DESCRIBE FORMATTED 文により、変更されたメタ情報を確認してみましょう。
+
+```sql
+DESCRIBE FORMATTED ${user_id}_airlines.planes;
+```
 
 |===
 | *Location*                                                           | データファイルの場所は変更されず、引き続きクラウドストレージ（S3）に置かれています。これは Hive テーブルのときの場所と同じです。  
@@ -641,20 +652,7 @@ DESCRIBE FORMATTED ${user_id}_airlines.planes;
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-Iceberg テーブルへの In-place マイグレーションの前後では以下のテーブルプロパティに変化が現れます。
+Iceberg テーブルへの In-place マイグレーションの前後で変化するテーブルプロパティを、まとめて確認しておきましょう。
 
 
 |===
@@ -675,7 +673,15 @@ Iceberg テーブルへの In-place マイグレーションの前後では以�
 
 === 既存のテーブルをコピーしてIcebergテーブルを作成 (CTAS)
 
-CTAS 構文により Iceberg フォーマットの airports テーブルを作成します。
+Iceberg は CTAS 構文（Create Table as ...）をサポートしています。
+
+CTAS 構文により、Iceberg フォーマットのテーブルを新規で作成する際に、同時に既存のデータから中身のデータもロードしてくることができます。
+
+airports テーブルを使って、この動きを確認してみましょう。
+
+==== CTAS を使った新規テーブルの作成＆データロード
+
+以下のSQLを実行します。
 
 テーブルフォーマットの指定は、STORED *BY* 句であることに注意してください。
 
