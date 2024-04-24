@@ -1015,41 +1015,65 @@ image:img_40.png[]
 
 
 
-=== ロールバック　※実行しないでください
+=== ロールバック　*講師がGoを出すまで実行しないでください。*
 
 時々データは正しくロードされないことがあります。項目の欠損や不正データなど様々な要因が考えられます。
 
 このような場合、不正なデータを正しく削除して、もう一度データをロードしなければいけません。
 
-
-
 Iceberg ではロールバックコマンドがサポートされており、このようなケースで役立ちます。
+
+==== ロールバックの実行
 
 スナップショットIDを使ったロールバックでは、ALTER TABLE 文で EXECUTE ROLLBACK 句を使用します。
 
-以下はSQLの例です。 *ここでは実行しないでください。*
+以下はSQLの例です。 *講師がGoを出すまで実行しないでください。*
+
+${snapshot_id}には、2007年のデータまでが入っている時点（DESCRIBE HISTORY の結果の2行目）のスナップショットのIDを入れて実行してください。
 
 ```sql
--- ALTER TABLE ${user_id}_airlines.flights EXECUTE ROLLBACK(${snapshot_id});
+ALTER TABLE ${user_id}_airlines.flights EXECUTE ROLLBACK(${snapshot_id});
 ```
 
-=== スナップショットの保守　※実行しないでください
+==== ロールバックの結果の確認
 
-また時間の経過とともに、非常に古いスナップショットは不要となってきます。そのような場合にはスナップショットを無効化することができます。
+ロールバックの実行結果を、以下のSQLで確認します。
+
+```sql
+SELECT year, count(*)
+FROM ${user_id}_airlines.flights
+GROUP BY year
+ORDER BY year desc;
+```
+2008年のレコードカウントは表示されず、2007年までのレコードカウントのみが表示されていることを確認しましょう。
+
+=== スナップショットの保守　*講師がGoを出すまで実行しないでください。*
+
+時間の経過とともに、古いスナップショットは不要となってきます。そのような場合には、スナップショットを無効化することでストレージの逼迫を防ぐことができます。
+
+==== スナップショットの無効化
 
 スナップショットを無効化するには、ALTER TABLE 文の EXECUTE 句で、expire_snapshots() 関数を使用します。
 
-以下はSQLの例です。 *ここでは実行しないでください。*
+以下はSQLの例です。 *講師がGoを出すまで実行しないでください。*
+
+${create_ts}には、今残っているスナップショットの古い方のタイムスタンプ以降、最新のタイムスタンプより前のタイムスタンプを指定します。
 
 ```sql
 -- 指定したタイムスタンプまでのスナップショットを無効化します
 -- 無効化されたスナップショットによるタイムトラベルは不可能となります
--- ALTER TABLE ${user_id}_airlines_maint.flights EXECUTE expire_snapshots('${create_ts}');
+ALTER TABLE ${user_id}_airlines_maint.flights EXECUTE expire_snapshots('${create_ts}');
 ```
 
+==== スナップショットの無効化の確認
 
+*Impala* の Hue で、以下の SQL を実行してみましょう。
 
+```sql
+DESCRIBE HISTORY ${user_id}_airlines.flights;
+```
 
+creation_time が 指定したタイムスタンプより前のレコードが消えていることを確認しましょう。
 
 **__これでワークショップは完了です。__**
 
