@@ -914,6 +914,7 @@ image:img_35.png[]
 ${user_id} は各自のユーザ名を入力します。
 
 ```sql
+-- Impalaで実行
 DESCRIBE HISTORY ${user_id}_airlines.flights;
 ```
 
@@ -1062,7 +1063,7 @@ ${create_ts}には、今残っているスナップショットの古い方の�
 ```sql
 -- 指定したタイムスタンプまでのスナップショットを無効化します
 -- 無効化されたスナップショットによるタイムトラベルは不可能となります
-ALTER TABLE ${user_id}_airlines_maint.flights EXECUTE expire_snapshots('${create_ts}');
+ALTER TABLE ${user_id}_airlines.flights EXECUTE expire_snapshots('${create_ts}');
 ```
 
 ==== スナップショットの無効化の確認
